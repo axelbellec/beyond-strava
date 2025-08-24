@@ -41,6 +41,7 @@ The workflow is the following:
 ## What You Need
 
 - **uv** (recommended) or **Python 3.11+** installed on your machine
+- **DuckDB** for database queries and UI
 - A Strava API app (free to create)
 - Your Strava credentials in a `.env` file
 
@@ -66,6 +67,11 @@ Your activities are stored in a DuckDB database (`strava_activities.duckdb`) for
 Run any query with:
 ```bash
 duckdb strava_activities.duckdb -f queries/<folder>/<query-name>.sql
+```
+
+Or launch the DuckDB web UI for interactive exploration:
+```bash
+duckdb -ui strava_activities.duckdb
 ```
 
 ## Common Issues
