@@ -1,3 +1,5 @@
+activities/
+
 # Custom
 .claude/
 *.duckdb
