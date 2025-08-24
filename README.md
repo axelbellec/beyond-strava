@@ -21,17 +21,11 @@ STRAVA_REFRESH_TOKEN=your_refresh_token  # Will be updated after first auth
 
 ## How to Run
 
-Using uv:
+The workflow is the following:
 
-```bash
-uv run fetch.py
-```
-
-Then run the analysis:
-
-```bash
-uv run analyze.py
-```
+1. `uv run fetch.py` → fetches activities from Strava API
+2. `uv run analyze.py` → processes the JSON data into DuckDB database
+3. `duckdb strava_activities.duckdb -f queries/<query-name>.sql` → runs analysis queries
 
 > **Note:** Re-run `uv run analyze.py` whenever you fetch new activities to update your DuckDB database with the latest data.
 
