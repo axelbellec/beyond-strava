@@ -21,9 +21,19 @@ STRAVA_REFRESH_TOKEN=your_refresh_token  # Will be updated after first auth
 
 ## How to Run
 
+Using uv:
+
 ```bash
-deno run --allow-net --allow-read --allow-write --allow-run main.ts
+uv run fetch.py
 ```
+
+Then run the analysis:
+
+```bash
+uv run analyze.py
+```
+
+> **Note:** Re-run `uv run analyze.py` whenever you fetch new activities to update your DuckDB database with the latest data.
 
 **What it does:**
 
@@ -32,12 +42,19 @@ deno run --allow-net --allow-read --allow-write --allow-run main.ts
 - Handles the OAuth callback seamlessly
 - **Fetches ALL your historical activities** (using pagination)
 - Saves everything to `activities/<username>_yyyy-mm-dd_export.json` with a nice summary breakdown
+- Stores activities in a DuckDB database for fast querying
 
 ## What You Need
 
-- **Deno** installed on your machine
+- **uv** (recommended) or **Python 3.8+** installed on your machine
 - A Strava API app (free to create)
 - Your Strava credentials in a `.env` file
+
+If using uv, dependencies will be managed automatically. Otherwise, install dependencies manually:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## What You Get
 
@@ -49,6 +66,42 @@ Your activities get saved to `activities/<username>_yyyy-mm-dd_export.json` with
 - **Activity metadata**: Kudos, photos, gear used, weather conditions
 
 Perfect for building your own analysis dashboards, tracking progress, or feeding into ML models for performance insights.
+
+## Database Analysis
+
+Your activities are stored in a DuckDB database (`strava_activities.duckdb`) for fast querying. Run analysis using the pre-built queries:
+
+```bash
+# Monthly activity summary
+duckdb strava_activities.duckdb -f queries/monthly_activity_summary.sql
+
+# Performance trends by sport type
+duckdb strava_activities.duckdb -f queries/performance_trends_by_sport.sql
+
+# Weekly activity patterns
+duckdb strava_activities.duckdb -f queries/weekly_activity_patterns.sql
+
+# Longest activities by sport
+duckdb strava_activities.duckdb -f queries/longest_activities_by_sport.sql
+
+# Heart rate analysis
+duckdb strava_activities.duckdb -f queries/heart_rate_analysis.sql
+
+# Power analysis
+duckdb strava_activities.duckdb -f queries/power_analysis.sql
+
+# Elevation analysis
+duckdb strava_activities.duckdb -f queries/elevation_analysis.sql
+
+# Recent activity trends (last 6 months)
+duckdb strava_activities.duckdb -f queries/recent_activity_trends.sql
+```
+
+Or run custom queries directly:
+
+```bash
+duckdb strava_activities.duckdb -c "SELECT COUNT(*) as total_activities FROM activities;"
+```
 
 ## Common Issues
 

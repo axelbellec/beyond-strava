@@ -23,9 +23,14 @@ class StravaAnalyzer:
         """Create the necessary tables for Strava data."""
         print("📊 Creating database tables...")
 
+        # Drop tables in correct order (dependent tables first)
+        self.conn.execute("DROP TABLE IF EXISTS activity_maps CASCADE")
+        self.conn.execute("DROP TABLE IF EXISTS activities CASCADE")
+        self.conn.execute("DROP TABLE IF EXISTS athletes CASCADE")
+
         # Main activities table
         self.conn.execute("""
-            CREATE OR REPLACE TABLE activities (
+            CREATE TABLE activities (
                 id BIGINT PRIMARY KEY,
                 name VARCHAR,
                 distance DOUBLE,
@@ -81,7 +86,7 @@ class StravaAnalyzer:
 
         # Athlete information table
         self.conn.execute("""
-            CREATE OR REPLACE TABLE athletes (
+            CREATE TABLE athletes (
                 id INTEGER PRIMARY KEY,
                 resource_state INTEGER
             )
@@ -89,7 +94,7 @@ class StravaAnalyzer:
 
         # Map polylines table (separate due to potentially large size)
         self.conn.execute("""
-            CREATE OR REPLACE TABLE activity_maps (
+            CREATE TABLE activity_maps (
                 activity_id BIGINT,
                 map_id VARCHAR,
                 summary_polyline TEXT,
