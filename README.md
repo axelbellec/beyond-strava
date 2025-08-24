@@ -57,94 +57,15 @@ Perfect for building your own analysis dashboards, tracking progress, or feeding
 
 ## Database Analysis
 
-Your activities are stored in a DuckDB database (`strava_activities.duckdb`) for fast querying. Run analysis using the pre-built queries:
+Your activities are stored in a DuckDB database (`strava_activities.duckdb`) for fast querying. Pre-built queries are organized by sport for personalized analysis:
 
-### Global Analysis
+- `queries/global/` - Overall activity analysis
+- `queries/running/` - Running and trail running specific analysis  
+- `queries/strength/` - CrossFit and weight training analysis
 
+Run any query with:
 ```bash
-# Monthly activity summary
-duckdb strava_activities.duckdb -f queries/global/monthly_activity_summary.sql
-
-# Performance trends by sport type
-duckdb strava_activities.duckdb -f queries/global/performance_trends_by_sport.sql
-
-# Weekly activity patterns
-duckdb strava_activities.duckdb -f queries/global/weekly_activity_patterns.sql
-
-# Longest activities by sport
-duckdb strava_activities.duckdb -f queries/global/longest_activities_by_sport.sql
-
-# Heart rate analysis
-duckdb strava_activities.duckdb -f queries/global/heart_rate_analysis.sql
-
-# Power analysis
-duckdb strava_activities.duckdb -f queries/global/power_analysis.sql
-
-# Elevation analysis
-duckdb strava_activities.duckdb -f queries/global/elevation_analysis.sql
-
-# Recent activity trends (last 6 months)
-duckdb strava_activities.duckdb -f queries/global/recent_activity_trends.sql
-```
-
-### Running-Specific Analysis
-
-Deep dive into your running performance with specialized queries:
-
-```bash
-# Training load and volume analysis
-duckdb strava_activities.duckdb -f queries/running/training_load_analysis.sql
-
-# Pace progression and improvements over time
-duckdb strava_activities.duckdb -f queries/running/pace_progression_analysis.sql
-
-# Heart rate zones and training intensity
-duckdb strava_activities.duckdb -f queries/running/heart_rate_zones.sql
-
-# Running efficiency and form metrics
-duckdb strava_activities.duckdb -f queries/running/running_efficiency.sql
-
-# Weekly training patterns and consistency
-duckdb strava_activities.duckdb -f queries/running/weekly_training_patterns.sql
-
-# Personal records and performance tracking
-duckdb strava_activities.duckdb -f queries/running/personal_records_progression.sql
-
-# Terrain impact (road vs trail performance)
-duckdb strava_activities.duckdb -f queries/running/terrain_performance.sql
-
-# Fitness trends and aerobic development
-duckdb strava_activities.duckdb -f queries/running/fitness_trends.sql
-```
-
-### Strength Training Analysis
-
-Analyze your CrossFit and Weight Training sessions:
-
-```bash
-# Training frequency and consistency
-duckdb strava_activities.duckdb -f queries/strength/training_frequency_analysis.sql
-
-# Workout intensity and effort patterns
-duckdb strava_activities.duckdb -f queries/strength/workout_intensity_patterns.sql
-
-# Weekly training schedule and day-of-week patterns
-duckdb strava_activities.duckdb -f queries/strength/weekly_training_schedule.sql
-
-# Strength progression and adaptation tracking
-duckdb strava_activities.duckdb -f queries/strength/strength_progression_analysis.sql
-
-# Recovery patterns and training density
-duckdb strava_activities.duckdb -f queries/strength/recovery_patterns.sql
-
-# CrossFit vs Weight Training comparison
-duckdb strava_activities.duckdb -f queries/strength/crossfit_vs_weighttraining.sql
-```
-
-Or run custom queries directly:
-
-```bash
-duckdb strava_activities.duckdb -c "SELECT COUNT(*) as total_activities FROM activities;"
+duckdb strava_activities.duckdb -f queries/<folder>/<query-name>.sql
 ```
 
 ## Common Issues
