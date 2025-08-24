@@ -6,6 +6,8 @@ A personal tool to fetch and analyze my Strava activities using the Strava API w
 
 I wanted to get the most out of my training data. Strava gives you the basics, but there's so much more buried in those activity files. By pulling all my data locally, I can dig deeper, run custom analysis, build visualizations that actually matter to me, and discover insights that the standard apps just don't show.
 
+Plus, let's be honest, this was a perfect excuse to write SQL queries again!
+
 ## Setup
 
 1. Create a Strava app: https://www.strava.com/settings/api
@@ -61,15 +63,36 @@ Perfect for building your own analysis dashboards, tracking progress, or feeding
 Your activities are stored in a DuckDB database (`strava_activities.duckdb`) for fast querying. Pre-built queries are organized by sport for personalized analysis:
 
 - `queries/global/` - Overall activity analysis
-- `queries/running/` - Running and trail running specific analysis  
+- `queries/running/` - Running and trail running specific analysis
 - `queries/strength/` - CrossFit and weight training analysis
+- `queries/dashboard/` - Comprehensive training dashboard with all metrics
 
-Run any query with:
+### Quick Dashboard View
+
+Get a complete overview of your training with the comprehensive dashboard:
+
+```bash
+duckdb strava_activities.duckdb -f queries/dashboard/dashboard.sql
+```
+
+This shows:
+
+- **Weekly & Monthly Trends**: Training volume, intensity, and progression
+- **Performance Analysis**: Pace trends, heart rate zones, personal records
+- **Training Balance**: Sport distribution, consistency scores, workout scheduling
+- **Recent Activity Log**: Latest workouts with key metrics
+- **Strength Training**: Session frequency, intensity patterns, optimal training days
+
+### Custom Analysis
+
+Run any specific query with:
+
 ```bash
 duckdb strava_activities.duckdb -f queries/<folder>/<query-name>.sql
 ```
 
 Or launch the DuckDB web UI for interactive exploration:
+
 ```bash
 duckdb -ui strava_activities.duckdb
 ```

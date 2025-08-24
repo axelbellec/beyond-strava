@@ -21,7 +21,7 @@ class StravaAnalyzer:
 
     def create_tables(self) -> None:
         """Create the necessary tables for Strava data."""
-        print("📊 Creating database tables...")
+        print("Creating database tables...")
 
         # Drop tables in correct order (dependent tables first)
         self.conn.execute("DROP TABLE IF EXISTS activity_maps CASCADE")
@@ -103,14 +103,14 @@ class StravaAnalyzer:
             )
         """)
 
-        print("✅ Database tables created")
+        print("Database tables created")
 
     def load_json_data(self, json_file: Path) -> None:
         """Load Strava activities from JSON file into DuckDB."""
-        print(f"📥 Loading data from {json_file}...")
+        print(f"Loading data from {json_file}...")
 
         if not json_file.exists():
-            print(f"❌ File {json_file} does not exist")
+            print(f"File {json_file} does not exist")
             return
 
         with open(json_file, "r") as f:
@@ -122,7 +122,7 @@ class StravaAnalyzer:
         for activity in activities:
             self._insert_activity(activity)
 
-        print(f"✅ Loaded {len(activities)} activities into database")
+        print(f"Loaded {len(activities)} activities into database")
 
     def _insert_activity(self, activity: Dict[str, Any]) -> None:
         """Insert a single activity into the database."""
@@ -223,7 +223,7 @@ class StravaAnalyzer:
 
     def get_activity_summary(self) -> Dict[str, Any]:
         """Get summary statistics of all activities."""
-        print("📊 Generating activity summary...")
+        print("Generating activity summary...")
 
         # Basic counts
         total_activities = self.conn.execute(
@@ -324,24 +324,24 @@ class StravaAnalyzer:
         """Print a comprehensive summary of the activities."""
         summary = self.get_activity_summary()
 
-        print("\n🏃 Strava Activity Summary")
+        print("\nStrava Activity Summary")
         print(f"{'=' * 50}")
-        print(f"📊 Total Activities: {summary['total_activities']}")
-        print(f"🏃 Total Distance: {summary['totals']['distance_km']:.1f} km")
-        print(f"⏱️  Total Time: {summary['totals']['moving_time_hours']:.1f} hours")
-        print(f"⛰️  Total Elevation: {summary['totals']['elevation_gain_m']:.0f} m")
+        print(f"Total Activities: {summary['total_activities']}")
+        print(f"Total Distance: {summary['totals']['distance_km']:.1f} km")
+        print(f"Total Time: {summary['totals']['moving_time_hours']:.1f} hours")
+        print(f"Total Elevation: {summary['totals']['elevation_gain_m']:.0f} m")
 
         if summary["date_range"]["first"]:
             first_date = str(summary["date_range"]["first"])[:10]
             last_date = str(summary["date_range"]["last"])[:10]
-            print(f"📅 Date Range: {first_date} to {last_date}")
+            print(f"Date Range: {first_date} to {last_date}")
 
-        print("\n🏃 Activity Types:")
+        print("\nActivity Types:")
         for sport_type, count in summary["sport_breakdown"]:
             print(f"   {sport_type}: {count}")
 
         # Personal records
-        print("\n🏆 Personal Records:")
+        print("\nPersonal Records:")
         records = self.get_personal_records()
 
         if records["longest_distance"]:
@@ -361,6 +361,283 @@ class StravaAnalyzer:
                 f"   Highest Elevation: {elevation:.0f} m - {name} ({sport}, {date_str})"
             )
 
+    def create_dashboard_views(self) -> None:
+        """Create SQL views for dashboard functionality."""
+        print("Creating dashboard views...")
+        
+        # Weekly summary view
+        self.conn.execute("""
+            CREATE OR REPLACE VIEW v_weekly_summary AS
+            SELECT 
+                strftime('%Y-W%W', start_date) as week,
+                COUNT(*) as activities,
+                COUNT(DISTINCT sport_type) as sport_types,
+                ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as total_km,
+                ROUND(SUM(moving_time)/3600, 2) as total_hours,
+                ROUND(AVG(average_heartrate), 0) as avg_hr,
+                ROUND(SUM(total_elevation_gain), 0) as total_elevation_m,
+                ROUND(AVG(suffer_score), 1) as avg_suffer_score
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '12 weeks'
+            AND start_date IS NOT NULL
+            GROUP BY week
+            ORDER BY week DESC
+        """)
+        
+        # Monthly trends view
+        self.conn.execute("""
+            CREATE OR REPLACE VIEW v_monthly_trends AS
+            SELECT 
+                strftime('%Y-%m', start_date) as month,
+                sport_type,
+                COUNT(*) as activities,
+                ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as total_km,
+                ROUND(AVG(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as avg_km,
+                ROUND(SUM(moving_time)/3600, 2) as total_hours,
+                ROUND(AVG(average_heartrate), 0) as avg_hr,
+                ROUND(SUM(total_elevation_gain), 0) as total_elevation_m
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '12 months'
+            AND start_date IS NOT NULL
+            GROUP BY month, sport_type
+            ORDER BY month DESC, sport_type
+        """)
+        
+        # Personal records view
+        self.conn.execute("""
+            CREATE OR REPLACE VIEW v_personal_records AS
+            SELECT 
+                'Longest Distance' as record_type,
+                sport_type,
+                name,
+                ROUND(distance/1000, 2) as value,
+                'km' as unit,
+                start_date
+            FROM activities
+            WHERE distance IS NOT NULL
+            AND distance = (SELECT MAX(distance) FROM activities a2 WHERE a2.sport_type = activities.sport_type)
+            
+            UNION ALL
+            
+            SELECT 
+                'Longest Duration' as record_type,
+                sport_type,
+                name,
+                ROUND(moving_time/3600, 2) as value,
+                'hours' as unit,
+                start_date
+            FROM activities
+            WHERE moving_time IS NOT NULL
+            AND moving_time = (SELECT MAX(moving_time) FROM activities a2 WHERE a2.sport_type = activities.sport_type)
+            
+            UNION ALL
+            
+            SELECT 
+                'Highest Elevation' as record_type,
+                sport_type,
+                name,
+                total_elevation_gain as value,
+                'm' as unit,
+                start_date
+            FROM activities
+            WHERE total_elevation_gain IS NOT NULL
+            AND total_elevation_gain = (SELECT MAX(total_elevation_gain) FROM activities a2 WHERE a2.sport_type = activities.sport_type)
+            
+            ORDER BY record_type, sport_type
+        """)
+        
+        # Training balance view
+        self.conn.execute("""
+            CREATE OR REPLACE VIEW v_training_balance AS
+            SELECT 
+                sport_type,
+                COUNT(*) as sessions,
+                ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage,
+                ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as total_km,
+                ROUND(SUM(moving_time)/3600, 2) as total_hours,
+                ROUND(AVG(average_heartrate), 0) as avg_hr,
+                ROUND(AVG(suffer_score), 1) as avg_intensity
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '6 months'
+            AND start_date IS NOT NULL
+            GROUP BY sport_type
+            ORDER BY sessions DESC
+        """)
+        
+        # Recent activities view (last 30 days)
+        self.conn.execute("""
+            CREATE OR REPLACE VIEW v_recent_activities AS
+            SELECT 
+                start_date,
+                sport_type,
+                name,
+                ROUND(distance/1000, 2) as distance_km,
+                ROUND(moving_time/60, 1) as duration_min,
+                ROUND(total_elevation_gain, 0) as elevation_m,
+                average_heartrate as avg_hr,
+                suffer_score,
+                CASE WHEN average_speed > 0 AND distance > 0 
+                     THEN ROUND(1000 / (average_speed * 60), 2) 
+                     ELSE NULL 
+                END as pace_min_per_km
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '30 days'
+            AND start_date IS NOT NULL
+            ORDER BY start_date DESC
+        """)
+        
+        print("Dashboard views created successfully")
+
+    def create_dashboard_tables(self) -> None:
+        """Create pre-computed dashboard tables for faster access."""
+        print("Creating dashboard tables...")
+        
+        # Dashboard metrics table - key performance indicators
+        self.conn.execute("""
+            CREATE OR REPLACE TABLE dashboard_metrics AS
+            WITH current_week AS (
+                SELECT 
+                    COUNT(*) as activities_this_week,
+                    ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as km_this_week,
+                    ROUND(SUM(moving_time)/3600, 2) as hours_this_week,
+                    ROUND(AVG(suffer_score), 1) as avg_intensity_this_week
+                FROM activities 
+                WHERE start_date >= current_date - INTERVAL '7 days'
+                AND start_date < current_date
+            ),
+            last_week AS (
+                SELECT 
+                    COUNT(*) as activities_last_week,
+                    ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as km_last_week,
+                    ROUND(SUM(moving_time)/3600, 2) as hours_last_week,
+                    ROUND(AVG(suffer_score), 1) as avg_intensity_last_week
+                FROM activities 
+                WHERE start_date >= current_date - INTERVAL '14 days'
+                AND start_date < current_date - INTERVAL '7 days'
+            ),
+            current_month AS (
+                SELECT 
+                    COUNT(*) as activities_this_month,
+                    ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as km_this_month,
+                    ROUND(SUM(moving_time)/3600, 2) as hours_this_month
+                FROM activities 
+                WHERE start_date >= date_trunc('month', current_date)
+            )
+            SELECT 
+                'summary' as metric_type,
+                current_timestamp as updated_at,
+                cw.activities_this_week,
+                cw.km_this_week,
+                cw.hours_this_week,
+                cw.avg_intensity_this_week,
+                lw.activities_last_week,
+                lw.km_last_week,
+                lw.hours_last_week,
+                lw.avg_intensity_last_week,
+                cm.activities_this_month,
+                cm.km_this_month,
+                cm.hours_this_month,
+                -- Week over week changes
+                ROUND((cw.activities_this_week - lw.activities_last_week) * 100.0 / NULLIF(lw.activities_last_week, 0), 1) as activities_change_pct,
+                ROUND((cw.km_this_week - lw.km_last_week) * 100.0 / NULLIF(lw.km_last_week, 0), 1) as km_change_pct,
+                ROUND((cw.hours_this_week - lw.hours_last_week) * 100.0 / NULLIF(lw.hours_last_week, 0), 1) as hours_change_pct
+            FROM current_week cw
+            CROSS JOIN last_week lw  
+            CROSS JOIN current_month cm
+        """)
+        
+        # Dashboard trends table - time series data for charts
+        self.conn.execute("""
+            CREATE OR REPLACE TABLE dashboard_trends AS
+            SELECT 
+                'weekly' as period_type,
+                strftime('%Y-W%W', start_date) as period,
+                start_date as period_start,
+                sport_type,
+                COUNT(*) as activities,
+                ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as total_km,
+                ROUND(SUM(moving_time)/3600, 2) as total_hours,
+                ROUND(AVG(average_heartrate), 0) as avg_hr,
+                ROUND(SUM(total_elevation_gain), 0) as total_elevation_m,
+                ROUND(AVG(suffer_score), 1) as avg_suffer_score
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '6 months'
+            AND start_date IS NOT NULL
+            GROUP BY period_type, period, period_start, sport_type
+            
+            UNION ALL
+            
+            SELECT 
+                'monthly' as period_type,
+                strftime('%Y-%m', start_date) as period,
+                date_trunc('month', start_date) as period_start,
+                sport_type,
+                COUNT(*) as activities,
+                ROUND(SUM(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as total_km,
+                ROUND(SUM(moving_time)/3600, 2) as total_hours,
+                ROUND(AVG(average_heartrate), 0) as avg_hr,
+                ROUND(SUM(total_elevation_gain), 0) as total_elevation_m,
+                ROUND(AVG(suffer_score), 1) as avg_suffer_score
+            FROM activities
+            WHERE start_date >= current_date - INTERVAL '12 months'
+            AND start_date IS NOT NULL
+            GROUP BY period_type, period, period_start, sport_type
+            
+            ORDER BY period_start DESC, sport_type
+        """)
+        
+        # Dashboard comparisons table - performance comparisons
+        self.conn.execute("""
+            CREATE OR REPLACE TABLE dashboard_comparisons AS
+            WITH sport_averages AS (
+                SELECT 
+                    sport_type,
+                    ROUND(AVG(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as avg_distance_km,
+                    ROUND(AVG(moving_time/60), 1) as avg_duration_min,
+                    ROUND(AVG(average_heartrate), 0) as avg_hr,
+                    ROUND(AVG(suffer_score), 1) as avg_suffer_score,
+                    ROUND(AVG(CASE WHEN distance > 0 AND average_speed > 0 
+                              THEN 1000 / (average_speed * 60) ELSE NULL END), 2) as avg_pace_min_km
+                FROM activities
+                WHERE start_date >= current_date - INTERVAL '6 months'
+                AND start_date IS NOT NULL
+                GROUP BY sport_type
+            ),
+            recent_averages AS (
+                SELECT 
+                    sport_type,
+                    ROUND(AVG(CASE WHEN distance > 0 THEN distance/1000 ELSE 0 END), 2) as recent_avg_distance_km,
+                    ROUND(AVG(moving_time/60), 1) as recent_avg_duration_min,
+                    ROUND(AVG(average_heartrate), 0) as recent_avg_hr,
+                    ROUND(AVG(suffer_score), 1) as recent_avg_suffer_score,
+                    ROUND(AVG(CASE WHEN distance > 0 AND average_speed > 0 
+                              THEN 1000 / (average_speed * 60) ELSE NULL END), 2) as recent_avg_pace_min_km
+                FROM activities
+                WHERE start_date >= current_date - INTERVAL '30 days'
+                AND start_date IS NOT NULL
+                GROUP BY sport_type
+            )
+            SELECT 
+                sa.sport_type,
+                sa.avg_distance_km as six_month_avg_distance,
+                ra.recent_avg_distance_km as recent_avg_distance,
+                ROUND((ra.recent_avg_distance_km - sa.avg_distance_km) * 100.0 / NULLIF(sa.avg_distance_km, 0), 1) as distance_change_pct,
+                sa.avg_duration_min as six_month_avg_duration,
+                ra.recent_avg_duration_min as recent_avg_duration,
+                ROUND((ra.recent_avg_duration_min - sa.avg_duration_min) * 100.0 / NULLIF(sa.avg_duration_min, 0), 1) as duration_change_pct,
+                sa.avg_hr as six_month_avg_hr,
+                ra.recent_avg_hr as recent_avg_hr,
+                ROUND((ra.recent_avg_hr - sa.avg_hr) * 100.0 / NULLIF(sa.avg_hr, 0), 1) as hr_change_pct,
+                sa.avg_pace_min_km as six_month_avg_pace,
+                ra.recent_avg_pace_min_km as recent_avg_pace,
+                ROUND((ra.recent_avg_pace_min_km - sa.avg_pace_min_km) * 100.0 / NULLIF(sa.avg_pace_min_km, 0), 1) as pace_change_pct
+            FROM sport_averages sa
+            LEFT JOIN recent_averages ra ON sa.sport_type = ra.sport_type
+            ORDER BY sa.sport_type
+        """)
+        
+        print("Dashboard tables created successfully")
+
     def close(self) -> None:
         """Close the database connection."""
         if self.conn:
@@ -373,18 +650,18 @@ def main() -> None:
     activities_dir = Path("activities")
 
     if not activities_dir.exists():
-        print("❌ Activities directory not found. Run fetch.py first.")
+        print("Activities directory not found. Run fetch.py first.")
         return
 
     json_files = list(activities_dir.glob("*_export.json"))
 
     if not json_files:
-        print("❌ No activity export files found. Run fetch.py first.")
+        print("No activity export files found. Run fetch.py first.")
         return
 
     # Use the most recent file
     latest_file = max(json_files, key=lambda f: f.stat().st_mtime)
-    print(f"📁 Using activity file: {latest_file}")
+    print(f"Using activity file: {latest_file}")
 
     # Initialize analyzer
     analyzer = StravaAnalyzer()
@@ -393,12 +670,17 @@ def main() -> None:
         # Create tables and load data
         analyzer.create_tables()
         analyzer.load_json_data(latest_file)
+        
+        # Create dashboard views and tables
+        analyzer.create_dashboard_views()
+        analyzer.create_dashboard_tables()
 
         # Print summary
         analyzer.print_summary()
 
-        print(f"\n💾 Database saved as: {analyzer.db_path}")
-        print("🔍 You can now query the data using DuckDB CLI or any SQL client")
+        print(f"\nDatabase saved as: {analyzer.db_path}")
+        print("You can now query the data using DuckDB CLI or any SQL client")
+        print("Launch dashboard with: duckdb -ui strava_activities.duckdb")
 
     finally:
         analyzer.close()

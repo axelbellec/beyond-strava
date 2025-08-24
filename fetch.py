@@ -47,7 +47,7 @@ class StravaFetcher:
                 response.raise_for_status()
                 tokens = response.json()
 
-                print("\n✅ Success! New tokens obtained.")
+                print("\nSuccess! New tokens obtained.")
                 print("Update your .env file with:")
                 print(f"STRAVA_REFRESH_TOKEN={tokens['refresh_token']}")
                 os.environ["STRAVA_REFRESH_TOKEN"] = tokens["refresh_token"]
@@ -55,9 +55,9 @@ class StravaFetcher:
                 return tokens
 
         except httpx.HTTPStatusError as e:
-            print(f"❌ Token exchange failed: {e.response.text}")
+            print(f"Token exchange failed: {e.response.text}")
         except Exception as e:
-            print(f"❌ Error exchanging token: {e}")
+            print(f"Error exchanging token: {e}")
 
         return None
 
@@ -73,9 +73,9 @@ class StravaFetcher:
                 return response.json()
 
         except httpx.HTTPStatusError as e:
-            print(f"❌ Failed to fetch athlete info: {e.response.text}")
+            print(f"Failed to fetch athlete info: {e.response.text}")
         except Exception as e:
-            print(f"❌ Error fetching athlete info: {e}")
+            print(f"Error fetching athlete info: {e}")
 
         return None
 
@@ -85,7 +85,7 @@ class StravaFetcher:
         page = 1
         per_page = 200  # Maximum allowed by Strava API
 
-        print("📥 Fetching all activities...")
+        print("Fetching all activities...")
 
         async with httpx.AsyncClient() as client:
             while True:
@@ -119,10 +119,10 @@ class StravaFetcher:
                     await asyncio.sleep(0.1)
 
                 except httpx.HTTPStatusError as e:
-                    print(f"❌ Failed to fetch activities: {e.response.text}")
+                    print(f"Failed to fetch activities: {e.response.text}")
                     break
                 except Exception as e:
-                    print(f"❌ Error fetching activities: {e}")
+                    print(f"Error fetching activities: {e}")
                     break
 
         return all_activities
@@ -141,7 +141,7 @@ class StravaFetcher:
         with open(filename, "w") as f:
             json.dump(activities, f, indent=2)
 
-        print(f"✅ {len(activities)} total activities saved to {filename}")
+        print(f"{len(activities)} total activities saved to {filename}")
         return filename
 
     def print_activity_summary(self, activities: List[Dict[str, Any]]) -> None:
@@ -151,7 +151,7 @@ class StravaFetcher:
             sport_type = activity.get("sport_type") or activity.get("type", "Unknown")
             sport_summary[sport_type] += 1
 
-        print("\n📊 Activity summary by sport type:")
+        print("\nActivity summary by sport type:")
         for sport, count in sport_summary.most_common():
             print(f"   {sport}: {count}")
 
@@ -194,7 +194,7 @@ class StravaFetcher:
     async def process_activities(self, access_token: str) -> None:
         """Process activities: fetch athlete info and all activities."""
         # Fetch athlete info
-        print("👤 Fetching athlete information...")
+        print("Fetching athlete information...")
         athlete = await self.fetch_athlete_info(access_token)
 
         if not athlete:
@@ -231,7 +231,7 @@ class StravaFetcher:
         try:
             webbrowser.open(url)
         except Exception as e:
-            print(f"📱 Could not open browser automatically. Please open: {url}")
+            print(f"Could not open browser automatically. Please open: {url}")
             print(f"Error: {e}")
 
     async def start_auth_server(self) -> None:
@@ -239,11 +239,11 @@ class StravaFetcher:
         app = web.Application()
         app.router.add_get("/", self.handle_auth_callback)
 
-        print(f"🚀 Starting auth server on http://localhost:{self.port}")
+        print(f"Starting auth server on http://localhost:{self.port}")
 
         # Create auth URL and open browser
         auth_url = self.create_auth_url()
-        print("📱 Opening browser for authorization...")
+        print("Opening browser for authorization...")
         self.open_browser(auth_url)
         print("⏳ Waiting for authorization callback...")
 
@@ -258,7 +258,7 @@ class StravaFetcher:
         try:
             await asyncio.Future()  # Run forever
         except KeyboardInterrupt:
-            print("\n🛑 Interrupted by user")
+            print("\nInterrupted by user")
         finally:
             await runner.cleanup()
 
@@ -270,8 +270,8 @@ async def main() -> None:
     client_secret = os.getenv("STRAVA_CLIENT_SECRET")
 
     if not client_id or not client_secret:
-        print("❌ STRAVA_CLIENT_ID or STRAVA_CLIENT_SECRET not found")
-        print("💡 Run with: uv run --env-file .env fetch.py")
+        print("STRAVA_CLIENT_ID or STRAVA_CLIENT_SECRET not found")
+        print("Run with: uv run --env-file .env fetch.py")
         return
 
     # Create fetcher with proper credentials
@@ -280,7 +280,7 @@ async def main() -> None:
     try:
         await fetcher.start_auth_server()
     except KeyboardInterrupt:
-        print("\n🎉 Done!")
+        print("\nDone!")
 
 
 if __name__ == "__main__":
